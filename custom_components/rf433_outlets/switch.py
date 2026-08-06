@@ -90,15 +90,34 @@ class RF433OutletSwitch(SwitchEntity, RestoreEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the outlet on."""
-        await self._send_code(self._on_code)
-        self._attr_is_on = True
-        self.async_write_ha_state()
+        await self._set_state(True, self._on_code)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the outlet off."""
-        await self._send_code(self._off_code)
-        self._attr_is_on = False
+        await self._set_state(False, self._off_code)
+
+    async def _set_state(self, is_on: bool, code: str) -> None:
+        """Update the cached state first, then transmit the RF code.
+
+        The state is written *before* the (comparatively slow) RF transmission.
+        With Report State enabled, the google_assistant integration runs the
+        turn_on/turn_off service non-blocking and immediately serialises the
+        entity state into its EXECUTE response. If we transmitted first and
+        wrote the state afterwards, that response would carry the pre-command
+        state and Google Home would show the tile flipping on -> off -> on.
+        Writing the state up front makes the serialised response already reflect
+        the requested value. If the transmission fails, the optimistic state is
+        rolled back so we do not report a state the outlet never reached.
+        """
+        previous = self._attr_is_on
+        self._attr_is_on = is_on
         self.async_write_ha_state()
+        try:
+            await self._send_code(code)
+        except Exception:
+            self._attr_is_on = previous
+            self.async_write_ha_state()
+            raise
 
     async def _send_code(self, code: str) -> None:
         """Run codesend and verify the transmission succeeded.
