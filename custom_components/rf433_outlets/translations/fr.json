@@ -1,0 +1,31 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ajouter une prise RF433",
+        "description": "Chaque prise est créée comme un appareil distinct.",
+        "data": {
+          "name": "Nom de la prise",
+          "on_code": "Code d'allumage (ON)",
+          "off_code": "Code d'extinction (OFF)",
+          "pulse_length": "Longueur de pulse"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Une prise portant ce nom existe déjà."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options de la prise RF433",
+        "data": {
+          "on_code": "Code d'allumage (ON)",
+          "off_code": "Code d'extinction (OFF)",
+          "pulse_length": "Longueur de pulse"
+        }
+      }
+    }
+  }
+}

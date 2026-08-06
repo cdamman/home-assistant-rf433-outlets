@@ -1,0 +1,31 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add an RF433 outlet",
+        "description": "Each outlet is created as a separate device.",
+        "data": {
+          "name": "Outlet name",
+          "on_code": "ON code",
+          "off_code": "OFF code",
+          "pulse_length": "Pulse length"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "An outlet with this name already exists."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "RF433 outlet options",
+        "data": {
+          "on_code": "ON code",
+          "off_code": "OFF code",
+          "pulse_length": "Pulse length"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,144 @@
+"""Switch platform for RF433 Outlets."""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+from pathlib import Path
+from typing import Any
+
+from homeassistant.components.switch import SwitchEntity
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_NAME, STATE_ON
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.restore_state import RestoreEntity
+
+from .const import (
+    CODESEND_PATH,
+    CONF_OFF_CODE,
+    CONF_ON_CODE,
+    CONF_PULSE_LENGTH,
+    DEFAULT_PULSE_LENGTH,
+    DOMAIN,
+    PIN_CODE,
+)
+
+_LOGGER = logging.getLogger(__name__)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Create the switch entity for this outlet."""
+    async_add_entities([RF433OutletSwitch(entry)])
+
+
+class RF433OutletSwitch(SwitchEntity, RestoreEntity):
+    """An RF433 outlet driven by the codesend executable."""
+
+    # The real outlet state cannot be read back (one-way RF), so the state is
+    # assumed and cached after every action.
+    _attr_assumed_state = True
+    _attr_has_entity_name = True
+    _attr_name = None  # the entity takes the device name
+    _attr_icon = "mdi:power-socket-eu"
+
+    def __init__(self, entry: ConfigEntry) -> None:
+        """Initialise the outlet from its config entry."""
+        self._entry = entry
+        # Codes are editable through the options; fall back to the initial data.
+        self._on_code = str(entry.options.get(CONF_ON_CODE, entry.data[CONF_ON_CODE]))
+        self._off_code = str(
+            entry.options.get(CONF_OFF_CODE, entry.data[CONF_OFF_CODE])
+        )
+        self._attr_unique_id = entry.entry_id
+        self._attr_is_on = False
+
+        # Each outlet is a dedicated device.
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, entry.entry_id)},
+            name=entry.data[CONF_NAME],
+            manufacturer="RF433 Outlets",
+            model="RF 433 MHz controlled outlet",
+        )
+
+    @property
+    def _pulse_length(self) -> int:
+        """Current pulse length (editable through the options)."""
+        return self._entry.options.get(CONF_PULSE_LENGTH, DEFAULT_PULSE_LENGTH)
+
+    async def async_added_to_hass(self) -> None:
+        """Restore the state cached when Home Assistant last shut down."""
+        await super().async_added_to_hass()
+        if (last_state := await self.async_get_last_state()) is not None:
+            self._attr_is_on = last_state.state == STATE_ON
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn the outlet on."""
+        await self._send_code(self._on_code)
+        self._attr_is_on = True
+        self.async_write_ha_state()
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Turn the outlet off."""
+        await self._send_code(self._off_code)
+        self._attr_is_on = False
+        self.async_write_ha_state()
+
+    async def _send_code(self, code: str) -> None:
+        """Run codesend and verify the transmission succeeded.
+
+        Command: codesend <code> <PIN=0> <pulse_length>
+        Expected success line on stdout: "sending code[<code>]"
+        """
+        args = [CODESEND_PATH, code, PIN_CODE, str(self._pulse_length)]
+        _LOGGER.debug("Running codesend: %s", " ".join(args))
+
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *args,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await proc.communicate()
+        except FileNotFoundError as err:
+            # ENOENT from exec does not always mean the file is missing. When
+            # the file is present, it almost always means the OS cannot find
+            # something needed to run it: for a script, a wrong shebang or CRLF
+            # line endings; for a binary, a missing dynamic loader or shared
+            # library (e.g. built for a different architecture/libc than the
+            # Home Assistant container it runs in).
+            if Path(CODESEND_PATH).is_file():
+                raise HomeAssistantError(
+                    f"codesend exists at {CODESEND_PATH} but could not be "
+                    "executed (No such file or directory). This usually means "
+                    "its interpreter or a shared library is missing: check the "
+                    "shebang and line endings for a script, or the architecture "
+                    "and linked libraries for a binary."
+                ) from err
+            raise HomeAssistantError(
+                f"codesend executable not found: {CODESEND_PATH}"
+            ) from err
+        except PermissionError as err:
+            raise HomeAssistantError(
+                f"codesend is not executable: {CODESEND_PATH} (run: chmod +x)"
+            ) from err
+        except OSError as err:
+            raise HomeAssistantError(f"Failed to run codesend: {err}") from err
+
+        output = stdout.decode(errors="replace").strip()
+        expected = f"sending code[{code}]"
+
+        if proc.returncode != 0 or expected not in output:
+            err_out = output or stderr.decode(errors="replace").strip()
+            raise HomeAssistantError(
+                f"codesend failed (return code {proc.returncode}). "
+                f"Output: {err_out!r}"
+            )
+
+        _LOGGER.debug("codesend OK: %s", output)

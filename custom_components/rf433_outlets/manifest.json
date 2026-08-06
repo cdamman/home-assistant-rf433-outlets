@@ -1,0 +1,11 @@
+{
+  "domain": "rf433_outlets",
+  "name": "RF433 Outlets",
+  "codeowners": [],
+  "config_flow": true,
+  "documentation": "https://github.com/corentin/rf433_outlets",
+  "integration_type": "device",
+  "iot_class": "assumed_state",
+  "requirements": [],
+  "version": "1.0.0"
+}
