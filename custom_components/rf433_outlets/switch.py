@@ -28,6 +28,15 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+# Serialises RF transmissions across every outlet. The 433 MHz transmitter is a
+# single shared medium, so two codesend calls running at once would collide on
+# the air. This lock is module-level on purpose: there is one physical
+# transmitter (one CODESEND_PATH), so every entity, across every config entry,
+# must take turns on it. Only the transmission itself is held under the lock;
+# the optimistic state write happens before acquiring it, so tiles still update
+# immediately and commands merely go out one after another.
+_RF_TX_LOCK = asyncio.Lock()
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -113,7 +122,8 @@ class RF433OutletSwitch(SwitchEntity, RestoreEntity):
         self._attr_is_on = is_on
         self.async_write_ha_state()
         try:
-            await self._send_code(code)
+            async with _RF_TX_LOCK:
+                await self._send_code(code)
         except Exception:
             self._attr_is_on = previous
             self.async_write_ha_state()
