@@ -17,7 +17,9 @@ DEFAULT_PULSE_LENGTH = 180
 # Declared power draw of the appliance plugged into the outlet, in watts. The
 # outlet has no metering hardware: this value is what the power sensor reports
 # while the outlet is on, and what the daily energy sensor integrates over time.
-DEFAULT_POWER = 100.0
+# Defaults to 0: nothing is declared until the user states what is plugged in,
+# so the sensors read 0 W / 0 kWh rather than inventing a consumption.
+DEFAULT_POWER = 0.0
 
 # The codesend executable is shipped inside the integration folder, next to
 # __init__.py. The path is not configurable.
