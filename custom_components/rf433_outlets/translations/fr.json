@@ -8,7 +8,8 @@
           "name": "Nom de la prise",
           "on_code": "Code d'allumage (ON)",
           "off_code": "Code d'extinction (OFF)",
-          "pulse_length": "Longueur de pulse"
+          "pulse_length": "Longueur de pulse",
+          "power": "Consommation à l'état allumé (W)"
         }
       }
     },
@@ -23,8 +24,19 @@
         "data": {
           "on_code": "Code d'allumage (ON)",
           "off_code": "Code d'extinction (OFF)",
-          "pulse_length": "Longueur de pulse"
+          "pulse_length": "Longueur de pulse",
+          "power": "Consommation à l'état allumé (W)"
         }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "current_power": {
+        "name": "Consommation actuelle"
+      },
+      "today_energy": {
+        "name": "Consommation d'aujourd'hui"
       }
     }
   }
