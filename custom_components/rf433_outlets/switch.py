@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from homeassistant.components.switch import SwitchEntity
+from homeassistant.components.switch import SwitchDeviceClass, SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, STATE_ON
 from homeassistant.core import HomeAssistant
@@ -46,6 +46,10 @@ class RF433OutletSwitch(SwitchEntity, RestoreEntity):
     _attr_assumed_state = True
     _attr_has_entity_name = True
     _attr_name = None  # the entity takes the device name
+    # Exposes the entity as a plug/outlet (not a switch) to Home Assistant and,
+    # through the google_assistant integration, to Google Home. The mapping
+    # (switch, OUTLET) -> action.devices.types.OUTLET is what Google uses.
+    _attr_device_class = SwitchDeviceClass.OUTLET
     _attr_icon = "mdi:power-socket-eu"
 
     def __init__(self, entry: ConfigEntry) -> None:
