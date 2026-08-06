@@ -19,7 +19,9 @@ from homeassistant.util import slugify
 from .const import (
     CONF_OFF_CODE,
     CONF_ON_CODE,
+    CONF_POWER,
     CONF_PULSE_LENGTH,
+    DEFAULT_POWER,
     DEFAULT_PULSE_LENGTH,
     DOMAIN,
 )
@@ -51,6 +53,7 @@ class RF433OutletsConfigFlow(ConfigFlow, domain=DOMAIN):
                 # Parameters editable later through the options flow.
                 options={
                     CONF_PULSE_LENGTH: user_input[CONF_PULSE_LENGTH],
+                    CONF_POWER: user_input[CONF_POWER],
                 },
             )
 
@@ -62,6 +65,9 @@ class RF433OutletsConfigFlow(ConfigFlow, domain=DOMAIN):
                 vol.Required(
                     CONF_PULSE_LENGTH, default=DEFAULT_PULSE_LENGTH
                 ): vol.All(vol.Coerce(int), vol.Range(min=1)),
+                vol.Required(CONF_POWER, default=DEFAULT_POWER): vol.All(
+                    vol.Coerce(float), vol.Range(min=0)
+                ),
             }
         )
         return self.async_show_form(
@@ -103,6 +109,10 @@ class RF433OutletsOptionsFlow(OptionsFlow):
                     CONF_PULSE_LENGTH,
                     default=current.get(CONF_PULSE_LENGTH, DEFAULT_PULSE_LENGTH),
                 ): vol.All(vol.Coerce(int), vol.Range(min=1)),
+                vol.Required(
+                    CONF_POWER,
+                    default=current.get(CONF_POWER, DEFAULT_POWER),
+                ): vol.All(vol.Coerce(float), vol.Range(min=0)),
             }
         )
         return self.async_show_form(step_id="init", data_schema=schema)

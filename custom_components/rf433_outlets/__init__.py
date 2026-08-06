@@ -1,7 +1,7 @@
 """RF433 Outlets integration.
 
 Each config entry represents one outlet: it creates a dedicated device holding
-a single switch entity.
+a switch entity plus the consumption sensors derived from its state.
 """
 
 from __future__ import annotations
@@ -10,13 +10,18 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
-PLATFORMS: list[Platform] = [Platform.SWITCH]
+from .runtime import RF433OutletRuntimeData
+
+PLATFORMS: list[Platform] = [Platform.SWITCH, Platform.SENSOR]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up an outlet from a config entry."""
+    # Shared between the platforms: the switch publishes its state here and the
+    # sensors read it. Must exist before the platforms are forwarded.
+    entry.runtime_data = RF433OutletRuntimeData()
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    # Reload the entry whenever the options change (codes, pulse length).
+    # Reload the entry whenever the options change (codes, pulse length, power).
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
 

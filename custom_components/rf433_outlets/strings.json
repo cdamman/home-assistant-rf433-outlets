@@ -8,7 +8,8 @@
           "name": "Outlet name",
           "on_code": "ON code",
           "off_code": "OFF code",
-          "pulse_length": "Pulse length"
+          "pulse_length": "Pulse length",
+          "power": "Power draw when on (W)"
         }
       }
     },
@@ -23,8 +24,19 @@
         "data": {
           "on_code": "ON code",
           "off_code": "OFF code",
-          "pulse_length": "Pulse length"
+          "pulse_length": "Pulse length",
+          "power": "Power draw when on (W)"
         }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "current_power": {
+        "name": "Current consumption"
+      },
+      "today_energy": {
+        "name": "Today's consumption"
       }
     }
   }

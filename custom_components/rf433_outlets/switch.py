@@ -25,6 +25,7 @@ from .const import (
     DOMAIN,
     PIN_CODE,
 )
+from .runtime import RF433OutletRuntimeData
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -77,6 +78,7 @@ class RF433OutletSwitch(SwitchEntity, RestoreEntity):
     def __init__(self, entry: ConfigEntry) -> None:
         """Initialise the outlet from its config entry."""
         self._entry = entry
+        self._runtime: RF433OutletRuntimeData = entry.runtime_data
         # Codes are editable through the options; fall back to the initial data.
         self._on_code = str(entry.options.get(CONF_ON_CODE, entry.data[CONF_ON_CODE]))
         self._off_code = str(
@@ -103,6 +105,9 @@ class RF433OutletSwitch(SwitchEntity, RestoreEntity):
         await super().async_added_to_hass()
         if (last_state := await self.async_get_last_state()) is not None:
             self._attr_is_on = last_state.state == STATE_ON
+        # Publish it for the consumption sensors, which cannot read it back
+        # from an entity that is not in the state machine yet.
+        self._runtime.async_set_is_on(bool(self._attr_is_on))
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the outlet on."""
@@ -127,6 +132,7 @@ class RF433OutletSwitch(SwitchEntity, RestoreEntity):
         """
         previous = self._attr_is_on
         self._attr_is_on = is_on
+        self._runtime.async_set_is_on(is_on)
         self.async_write_ha_state()
         try:
             async with _RF_TX_LOCK:
@@ -134,6 +140,7 @@ class RF433OutletSwitch(SwitchEntity, RestoreEntity):
                 await asyncio.sleep(_RF_TX_GAP)
         except Exception:
             self._attr_is_on = previous
+            self._runtime.async_set_is_on(bool(previous))
             self.async_write_ha_state()
             raise
 
