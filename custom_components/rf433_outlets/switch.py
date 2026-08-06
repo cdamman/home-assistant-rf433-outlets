@@ -37,6 +37,13 @@ _LOGGER = logging.getLogger(__name__)
 # immediately and commands merely go out one after another.
 _RF_TX_LOCK = asyncio.Lock()
 
+# Minimum gap kept between two consecutive RF transmissions, in seconds. The
+# lock already prevents overlap; this gap adds breathing room so a receiver is
+# not still settling from the previous burst when the next one starts. Held
+# under the lock (after codesend), so it only ever spaces transmissions apart.
+# Tune if grouped commands are occasionally missed.
+_RF_TX_GAP = 0.3
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -124,6 +131,7 @@ class RF433OutletSwitch(SwitchEntity, RestoreEntity):
         try:
             async with _RF_TX_LOCK:
                 await self._send_code(code)
+                await asyncio.sleep(_RF_TX_GAP)
         except Exception:
             self._attr_is_on = previous
             self.async_write_ha_state()
