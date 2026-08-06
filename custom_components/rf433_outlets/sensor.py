@@ -25,6 +25,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import (
     async_track_time_change,
@@ -33,8 +34,8 @@ from homeassistant.helpers.event import (
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.util import dt as dt_util
 
+from . import RF433OutletRuntimeData, signal_outlet_state
 from .const import CONF_POWER, DEFAULT_POWER, DOMAIN
-from .runtime import RF433OutletRuntimeData
 
 # How often the daily energy sensor integrates the current power. Switching the
 # outlet integrates immediately too, so this only bounds how stale the total
@@ -102,7 +103,11 @@ class RF433OutletPowerSensor(RF433OutletSensorBase):
         """Follow the switch state."""
         await super().async_added_to_hass()
         self.async_on_remove(
-            self._runtime.async_add_listener(self._async_outlet_changed)
+            async_dispatcher_connect(
+                self.hass,
+                signal_outlet_state(self._entry.entry_id),
+                self._async_outlet_changed,
+            )
         )
 
     @callback
@@ -176,7 +181,11 @@ class RF433OutletDailyEnergySensor(RF433OutletSensorBase, RestoreEntity):
         self._published_value = self.native_value
 
         self.async_on_remove(
-            self._runtime.async_add_listener(self._async_outlet_changed)
+            async_dispatcher_connect(
+                self.hass,
+                signal_outlet_state(self._entry.entry_id),
+                self._async_outlet_changed,
+            )
         )
         self.async_on_remove(
             async_track_time_interval(

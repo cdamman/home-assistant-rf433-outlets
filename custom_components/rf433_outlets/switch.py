@@ -10,12 +10,14 @@ from typing import Any
 from homeassistant.components.switch import SwitchDeviceClass, SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, STATE_ON
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
+from . import RF433OutletRuntimeData, signal_outlet_state
 from .const import (
     CODESEND_PATH,
     CONF_OFF_CODE,
@@ -25,7 +27,6 @@ from .const import (
     DOMAIN,
     PIN_CODE,
 )
-from .runtime import RF433OutletRuntimeData
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -105,9 +106,7 @@ class RF433OutletSwitch(SwitchEntity, RestoreEntity):
         await super().async_added_to_hass()
         if (last_state := await self.async_get_last_state()) is not None:
             self._attr_is_on = last_state.state == STATE_ON
-        # Publish it for the consumption sensors, which cannot read it back
-        # from an entity that is not in the state machine yet.
-        self._runtime.async_set_is_on(bool(self._attr_is_on))
+        self._publish_state(bool(self._attr_is_on))
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the outlet on."""
@@ -132,7 +131,7 @@ class RF433OutletSwitch(SwitchEntity, RestoreEntity):
         """
         previous = self._attr_is_on
         self._attr_is_on = is_on
-        self._runtime.async_set_is_on(is_on)
+        self._publish_state(is_on)
         self.async_write_ha_state()
         try:
             async with _RF_TX_LOCK:
@@ -140,9 +139,17 @@ class RF433OutletSwitch(SwitchEntity, RestoreEntity):
                 await asyncio.sleep(_RF_TX_GAP)
         except Exception:
             self._attr_is_on = previous
-            self._runtime.async_set_is_on(bool(previous))
+            self._publish_state(bool(previous))
             self.async_write_ha_state()
             raise
+
+    @callback
+    def _publish_state(self, is_on: bool) -> None:
+        """Share the state with the consumption sensors, if it changed."""
+        if self._runtime.is_on == is_on:
+            return
+        self._runtime.is_on = is_on
+        async_dispatcher_send(self.hass, signal_outlet_state(self._entry.entry_id))
 
     async def _send_code(self, code: str) -> None:
         """Run codesend and verify the transmission succeeded.
