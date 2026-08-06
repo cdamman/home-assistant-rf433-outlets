@@ -41,9 +41,15 @@ async def async_setup_entry(
 class RF433OutletSwitch(SwitchEntity, RestoreEntity):
     """An RF433 outlet driven by the codesend executable."""
 
-    # The real outlet state cannot be read back (one-way RF), so the state is
-    # assumed and cached after every action.
-    _attr_assumed_state = True
+    # The real outlet state cannot be read back (one-way RF). We nevertheless
+    # report a concrete state instead of an assumed one: Home Assistant caches
+    # the last commanded state and treats it as authoritative. This is what lets
+    # Google Home display and track on/off (an assumed_state entity is reported
+    # to Google as commandOnlyOnOff, i.e. state cannot be queried). The caveat
+    # is that this cached state is a belief, not a measurement: if the outlet is
+    # toggled by any other means, or an RF command fails to reach it, the
+    # displayed state will be wrong until the next command from HA.
+    _attr_assumed_state = False
     _attr_has_entity_name = True
     _attr_name = None  # the entity takes the device name
     # Exposes the entity as a plug/outlet (not a switch) to Home Assistant and,
