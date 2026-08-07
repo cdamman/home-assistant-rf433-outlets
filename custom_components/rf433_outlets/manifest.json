@@ -3,9 +3,10 @@
   "name": "RF433 Outlets",
   "codeowners": [],
   "config_flow": true,
-  "documentation": "https://github.com/corentin/rf433_outlets",
+  "documentation": "https://github.com/cdamman/home-assistant-rf433-outlets",
   "integration_type": "device",
   "iot_class": "assumed_state",
+  "issue_tracker": "https://github.com/cdamman/home-assistant-rf433-outlets/issues",
   "requirements": [],
   "version": "1.0.0"
 }
