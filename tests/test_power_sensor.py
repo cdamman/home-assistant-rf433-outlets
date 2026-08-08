@@ -43,3 +43,21 @@ def test_carries_the_metadata_home_assistant_needs(power_sensor):
     assert sensor.state_class == "measurement"
     assert sensor.unique_id == "01JABCDEF_power"
     assert sensor.translation_key == "current_power"
+
+
+def test_reports_the_standby_power_while_the_outlet_is_off(power_sensor):
+    outlet = power_sensor(power=1500, standby=2.5)
+    assert outlet.sensor.native_value == 2.5
+
+
+def test_switches_between_the_two_declared_levels(power_sensor):
+    outlet = power_sensor(power=1500, standby=2.5)
+    outlet.switch(True)
+    assert outlet.sensor.native_value == 1500.0
+    outlet.switch(False)
+    assert outlet.sensor.native_value == 2.5
+
+
+def test_standby_defaults_to_zero(power_sensor):
+    outlet = power_sensor(power=1500)
+    assert outlet.sensor.native_value == 0.0

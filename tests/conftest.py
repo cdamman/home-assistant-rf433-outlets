@@ -19,7 +19,10 @@ from custom_components.rf433_outlets import (  # noqa: E402
     RF433OutletRuntimeData,
     signal_outlet_state,
 )
-from custom_components.rf433_outlets.const import CONF_POWER  # noqa: E402
+from custom_components.rf433_outlets.const import (  # noqa: E402
+    CONF_POWER,
+    CONF_STANDBY_POWER,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -33,10 +36,19 @@ def _reset_stubs():
 class FakeConfigEntry:
     """Just the parts of a ConfigEntry the entities read."""
 
-    def __init__(self, power: float | None = None, name: str = "Lampe salon") -> None:
+    def __init__(
+        self,
+        power: float | None = None,
+        standby: float | None = None,
+        name: str = "Lampe salon",
+    ) -> None:
         self.entry_id = "01JABCDEF"
         self.data = {"name": name}
-        self.options = {} if power is None else {CONF_POWER: power}
+        self.options = {}
+        if power is not None:
+            self.options[CONF_POWER] = power
+        if standby is not None:
+            self.options[CONF_STANDBY_POWER] = standby
         self.runtime_data = RF433OutletRuntimeData()
 
 
@@ -89,8 +101,12 @@ def power_sensor():
     """Build a started power sensor and its driver."""
     from custom_components.rf433_outlets.sensor import RF433OutletPowerSensor
 
-    def _build(power: float | None = None, entry: FakeConfigEntry | None = None):
-        entry = entry or FakeConfigEntry(power)
+    def _build(
+        power: float | None = None,
+        standby: float | None = None,
+        entry: FakeConfigEntry | None = None,
+    ):
+        entry = entry or FakeConfigEntry(power, standby)
         return Outlet(entry, RF433OutletPowerSensor(entry))
 
     return _build
@@ -106,10 +122,11 @@ def energy_sensor():
 
     def _build(
         power: float | None = None,
+        standby: float | None = None,
         restore: ha_stubs.State | None = None,
         already_on: bool = False,
     ):
-        entry = FakeConfigEntry(power)
+        entry = FakeConfigEntry(power, standby)
         entry.runtime_data.is_on = already_on
         sensor = RF433OutletDailyEnergySensor(entry)
         sensor.last_state = restore

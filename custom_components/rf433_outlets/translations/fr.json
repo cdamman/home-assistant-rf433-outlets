@@ -9,7 +9,8 @@
           "on_code": "Code d'allumage (ON)",
           "off_code": "Code d'extinction (OFF)",
           "pulse_length": "Longueur de pulse",
-          "power": "Consommation à l'état allumé (W)"
+          "power": "Consommation à l'état allumé (W)",
+          "standby_power": "Consommation en veille (W)"
         }
       }
     },
@@ -25,7 +26,8 @@
           "on_code": "Code d'allumage (ON)",
           "off_code": "Code d'extinction (OFF)",
           "pulse_length": "Longueur de pulse",
-          "power": "Consommation à l'état allumé (W)"
+          "power": "Consommation à l'état allumé (W)",
+          "standby_power": "Consommation en veille (W)"
         }
       }
     }

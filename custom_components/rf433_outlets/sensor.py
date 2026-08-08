@@ -3,7 +3,8 @@
 The outlets have no metering hardware, so consumption is *simulated* from the
 switch state and a per-outlet power value configured by the user:
 
-* a power sensor reporting that value while the outlet is on, 0 W otherwise;
+* a power sensor reporting the on value while the outlet is on and the standby
+  value while it is off;
 * a daily energy sensor integrating that power and resetting at local midnight.
 """
 
@@ -35,7 +36,13 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.util import dt as dt_util
 
 from . import RF433OutletRuntimeData, signal_outlet_state
-from .const import CONF_POWER, DEFAULT_POWER, DOMAIN
+from .const import (
+    CONF_POWER,
+    CONF_STANDBY_POWER,
+    DEFAULT_POWER,
+    DEFAULT_STANDBY_POWER,
+    DOMAIN,
+)
 
 # How often the daily energy sensor integrates the current power. Switching the
 # outlet integrates immediately too, so this only bounds how stale the total
@@ -80,9 +87,16 @@ class RF433OutletSensorBase(SensorEntity):
         return float(self._entry.options.get(CONF_POWER, DEFAULT_POWER))
 
     @property
+    def _standby_power(self) -> float:
+        """Configured power draw while the outlet is off, in watts."""
+        return float(
+            self._entry.options.get(CONF_STANDBY_POWER, DEFAULT_STANDBY_POWER)
+        )
+
+    @property
     def _current_power(self) -> float:
-        """Power drawn right now: the configured value, or 0 W when off."""
-        return self._power if self._runtime.is_on else 0.0
+        """Power drawn right now: the on value, or the standby one when off."""
+        return self._power if self._runtime.is_on else self._standby_power
 
 
 class RF433OutletPowerSensor(RF433OutletSensorBase):

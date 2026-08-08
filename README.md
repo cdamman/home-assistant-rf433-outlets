@@ -16,7 +16,7 @@ Each outlet is a separate device, added from the UI, holding:
 | Entity | Type | Unit | Notes |
 | --- | --- | --- | --- |
 | *(device name)* | Switch | — | Device class `outlet`, exposed to Google Home as an outlet |
-| Current consumption | Sensor | W | Declared power while on, `0` while off |
+| Current consumption | Sensor | W | Declared power while on, declared standby power while off |
 | Today's consumption | Sensor | kWh | Diagnostic, resets at local midnight |
 
 ## Requirements
@@ -71,6 +71,7 @@ outlet.
 | OFF code | — | Decimal code transmitted to switch the outlet off |
 | Pulse length | 180 | Pulse length in µs, passed to `codesend` |
 | Power draw when on | 0 | Declared consumption of the appliance, in watts |
+| Standby power draw | 0 | What it keeps drawing while the outlet is off, in watts |
 
 Every field except the name can be changed later through the integration's
 **Configure** button; the outlet reloads itself when you save.
@@ -81,7 +82,9 @@ These outlets have no metering hardware. Both sensors are **derived from the
 switch state and the power value you declare**, not measured:
 
 * **Current consumption** reports the declared power while the outlet is on and
-  `0 W` while it is off.
+  the declared standby power while it is off. Standby covers what an appliance
+  keeps drawing through the outlet — a wall wart, a TV waiting for its remote,
+  a status LED — and is `0 W` unless you say otherwise.
 * **Today's consumption** integrates that power over time and resets at local
   midnight. It is published as a diagnostic entity, since the figure is declared
   rather than measured, and carries the metadata long-term statistics need
@@ -90,8 +93,9 @@ switch state and the power value you declare**, not measured:
 The daily total is integrated once a minute and immediately on every switch, so
 a toggle is billed at the level that was in force before it. It survives Home
 Assistant restarts and integration reloads, and is dropped when the stored reset
-timestamp belongs to a day already over. Left at the default of 0 W, the sensors
-simply read zero and write nothing.
+timestamp belongs to a day already over. Left at the default of 0 W for both
+levels, the sensors simply read zero and write nothing; declare a standby draw
+and the total keeps creeping up even with the outlet off, which is the point.
 
 Changing the declared power does not rewrite the past: the day's total keeps
 what was already accumulated at the previous level.

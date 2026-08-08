@@ -9,7 +9,8 @@
           "on_code": "ON code",
           "off_code": "OFF code",
           "pulse_length": "Pulse length",
-          "power": "Power draw when on (W)"
+          "power": "Power draw when on (W)",
+          "standby_power": "Standby power draw (W)"
         }
       }
     },
@@ -25,7 +26,8 @@
           "on_code": "ON code",
           "off_code": "OFF code",
           "pulse_length": "Pulse length",
-          "power": "Power draw when on (W)"
+          "power": "Power draw when on (W)",
+          "standby_power": "Standby power draw (W)"
         }
       }
     }
