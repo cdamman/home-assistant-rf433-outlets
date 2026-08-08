@@ -1,7 +1,9 @@
 {
   "domain": "rf433_outlets",
   "name": "RF433 Outlets",
-  "codeowners": [],
+  "codeowners": [
+    "@cdamman"
+  ],
   "config_flow": true,
   "documentation": "https://github.com/cdamman/home-assistant-rf433-outlets",
   "integration_type": "device",

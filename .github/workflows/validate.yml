@@ -1,0 +1,44 @@
+name: Validate
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  schedule:
+    # Weekly: hassfest and HACS tighten their rules over time, so a repository
+    # that passes today can stop passing without anything being pushed.
+    - cron: "30 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hassfest:
+    name: hassfest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    name: HACS
+    # No check is ignored here, so this job reports the repository's real state
+    # against the HACS publishing requirements. Two of its checks read
+    # repository metadata rather than the branch being built, and so cannot go
+    # green from a pull request:
+    #   * license — GitHub reads it from the default branch, so it turns green
+    #     once a LICENSE is merged there;
+    #   * topics — set on the repository itself, under "About".
+    # The brands check passes even though rf433_outlets is absent from
+    # home-assistant/brands. Submitting the icons there (under
+    # custom_integrations/rf433_outlets/) is what makes an icon appear in HACS
+    # and on the devices page — Home Assistant fetches it from
+    # brands.home-assistant.io, never from the brand/ folder shipped here — but
+    # this job does not enforce it.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hacs/action@main
+        with:
+          category: integration

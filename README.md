@@ -1,6 +1,10 @@
 # RF433 Outlets
 
 [![HACS: custom repository](https://img.shields.io/badge/HACS-custom-41BDF5.svg)](https://hacs.xyz/docs/faq/custom_repositories)
+[![License: MIT](https://img.shields.io/badge/license-MIT-41BDF5.svg)](LICENSE)
+[![Latest release](https://img.shields.io/github/v/release/cdamman/home-assistant-rf433-outlets?display_name=tag&sort=semver&color=41BDF5)](https://github.com/cdamman/home-assistant-rf433-outlets/releases/latest)
+[![Validate](https://github.com/cdamman/home-assistant-rf433-outlets/actions/workflows/validate.yml/badge.svg)](https://github.com/cdamman/home-assistant-rf433-outlets/actions/workflows/validate.yml)
+[![Tests](https://github.com/cdamman/home-assistant-rf433-outlets/actions/workflows/tests.yml/badge.svg)](https://github.com/cdamman/home-assistant-rf433-outlets/actions/workflows/tests.yml)
 
 Home Assistant integration for cheap 433 MHz remote-controlled outlets (the kind
 sold with a plastic remote, no metering, no feedback). It drives them through
@@ -23,8 +27,8 @@ Each outlet is a separate device, added from the UI, holding:
   64-bit Home Assistant OS / Container install on a Raspberry Pi. It links
   against the `libwiringPi.so.3.16` shipped next to it (via `RUNPATH=$ORIGIN`),
   so wiringPi does not need to be installed separately. On any other
-  architecture or libc, rebuild `codesend` from
-  [433Utils](https://github.com/ninjablocks/433Utils) and replace the binary.
+  architecture or libc, rebuild it — see
+  [How `codesend` was built](#how-codesend-was-built).
 * The ON and OFF codes of each outlet. Capture them with `RFSniffer` (also from
   433Utils) using a 433 MHz *receiver*, while pressing the buttons on the
   original remote.
@@ -32,6 +36,10 @@ Each outlet is a separate device, added from the UI, holding:
 ## Installation
 
 ### HACS (custom repository)
+
+[![Open your Home Assistant instance and open this repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=cdamman&repository=home-assistant-rf433-outlets&category=integration)
+
+The button opens this repository straight in your own HACS. Otherwise, by hand:
 
 1. HACS → three-dot menu → **Custom repositories**.
 2. Repository: `https://github.com/cdamman/home-assistant-rf433-outlets`,
@@ -51,7 +59,9 @@ chmod +x config/custom_components/rf433_outlets/codesend
 
 ## Configuration
 
-**Settings → Devices & services → Add integration → RF433 Outlets**, once per
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=rf433_outlets)
+
+Or **Settings → Devices & services → Add integration → RF433 Outlets**, once per
 outlet.
 
 | Field | Default | Meaning |
@@ -118,6 +128,73 @@ logger:
   logs:
     custom_components.rf433_outlets: debug
 ```
+
+## How `codesend` was built
+
+`codesend` comes from [433Utils](https://github.com/ninjablocks/433Utils) and was
+compiled **inside the Home Assistant container**, so that it matches the
+environment it has to run in. That matters: the Home Assistant image is
+Alpine-based, so a binary built on a regular Debian/Raspberry Pi OS host links
+against glibc and will not start inside the container — it fails with
+*"No such file or directory"* even though the file is plainly there.
+
+What the shipped binary reports about itself:
+
+| | |
+| --- | --- |
+| Architecture | ARM aarch64, position-independent executable |
+| Interpreter | `/lib/ld-musl-aarch64.so.1` (musl, i.e. Alpine) |
+| Linked against | `libwiringPi.so.3.16`, `libc.musl-aarch64.so.1` |
+| `RUNPATH` | `$ORIGIN` — it looks for wiringPi next to itself |
+
+That last line is why `libwiringPi.so.3.16` is shipped in the same folder and
+why nothing has to be installed system-wide.
+
+To reproduce it, from a shell inside the container (the *Advanced SSH & Web
+Terminal* add-on with protection mode off, or `docker exec -it homeassistant sh`):
+
+```sh
+apk add --no-cache build-base git
+
+# wiringPi — the maintained fork; 3.16 is the version shipped here
+git clone https://github.com/WiringPi/WiringPi.git
+cd WiringPi && ./build && cd ..
+
+# codesend, from 433Utils (rc-switch comes in as a submodule)
+git clone --recursive https://github.com/ninjablocks/433Utils.git
+cd 433Utils/RPi_utils
+g++ -o codesend codesend.cpp ../rc-switch/RCSwitch.cpp \
+    -I../rc-switch -lwiringPi -Wl,-rpath,'$ORIGIN'
+```
+
+Then copy `codesend` and `libwiringPi.so.3.16` into
+`custom_components/rf433_outlets/`, keeping the executable bit on `codesend`.
+Only the versioned library name is needed: the plain `libwiringPi.so` is the
+link-time name, while the loader resolves the `SONAME` recorded in the binary —
+`libwiringPi.so.3.16`.
+The build tools do not need to stay installed — they are gone after the next
+container update, while the compiled binary is committed to this repository.
+
+## Development
+
+The test suite covers the consumption sensors: the integration arithmetic, the
+midnight reset and what survives a restart. It stubs Home Assistant out rather
+than installing it, so it needs nothing but `pytest`:
+
+```bash
+pip install -r requirements-test.txt
+pytest
+```
+
+Every pull request runs two workflows: **Tests** (the suite above, on Python
+3.12 and 3.13) and **Validate** (`hassfest` plus the HACS action, which check
+the integration's metadata the way Home Assistant and HACS do).
+
+## License
+
+[MIT](LICENSE). `codesend` and `libwiringPi` are built from
+[433Utils](https://github.com/ninjablocks/433Utils) and
+[WiringPi](https://github.com/WiringPi/WiringPi) and keep their own licences.
 
 ## Repository
 
