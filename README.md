@@ -51,7 +51,17 @@ The button opens this repository straight in your own HACS. Otherwise, by hand:
 Copy `custom_components/rf433_outlets` into your Home Assistant `config/custom_components/`
 directory and restart Home Assistant.
 
-Either way, make sure `codesend` is executable once installed:
+### About the `codesend` permissions
+
+`codesend` is committed with its executable bit set, but HACS installs an
+integration by downloading its files one by one and writing them fresh, so the
+mode recorded in git does not survive the install — the binary lands as `0644`
+and the first command fails with *"codesend is not executable"*.
+
+The integration therefore restores the bit itself when it starts, and again
+after every update. Nothing to do by hand. Should that fail — a read-only
+configuration directory, a file owned by another user — it is logged as a
+warning and the fix is the usual one:
 
 ```bash
 chmod +x config/custom_components/rf433_outlets/codesend
@@ -119,7 +129,7 @@ air.
 
 | Symptom | Cause |
 | --- | --- |
-| `codesend is not executable` | Missing `+x` bit — see the `chmod` above |
+| `codesend is not executable` | The `+x` bit is missing and could not be restored automatically; look for the warning that says why, then see the `chmod` above |
 | `codesend exists ... but could not be executed (No such file or directory)` | The binary cannot be run by this OS: wrong architecture or libc. Rebuild it for your platform |
 | `codesend executable not found` | The integration folder was copied incompletely |
 | `codesend failed (return code ...)` | `codesend` ran but did not report the expected `sending code[...]` line; check GPIO wiring and permissions |
