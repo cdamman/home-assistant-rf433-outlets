@@ -21,8 +21,10 @@ from .const import (
     CONF_ON_CODE,
     CONF_POWER,
     CONF_PULSE_LENGTH,
+    CONF_STANDBY_POWER,
     DEFAULT_POWER,
     DEFAULT_PULSE_LENGTH,
+    DEFAULT_STANDBY_POWER,
     DOMAIN,
 )
 
@@ -54,6 +56,7 @@ class RF433OutletsConfigFlow(ConfigFlow, domain=DOMAIN):
                 options={
                     CONF_PULSE_LENGTH: user_input[CONF_PULSE_LENGTH],
                     CONF_POWER: user_input[CONF_POWER],
+                    CONF_STANDBY_POWER: user_input[CONF_STANDBY_POWER],
                 },
             )
 
@@ -68,6 +71,9 @@ class RF433OutletsConfigFlow(ConfigFlow, domain=DOMAIN):
                 vol.Required(CONF_POWER, default=DEFAULT_POWER): vol.All(
                     vol.Coerce(float), vol.Range(min=0)
                 ),
+                vol.Required(
+                    CONF_STANDBY_POWER, default=DEFAULT_STANDBY_POWER
+                ): vol.All(vol.Coerce(float), vol.Range(min=0)),
             }
         )
         return self.async_show_form(
@@ -112,6 +118,10 @@ class RF433OutletsOptionsFlow(OptionsFlow):
                 vol.Required(
                     CONF_POWER,
                     default=current.get(CONF_POWER, DEFAULT_POWER),
+                ): vol.All(vol.Coerce(float), vol.Range(min=0)),
+                vol.Required(
+                    CONF_STANDBY_POWER,
+                    default=current.get(CONF_STANDBY_POWER, DEFAULT_STANDBY_POWER),
                 ): vol.All(vol.Coerce(float), vol.Range(min=0)),
             }
         )

@@ -151,3 +151,34 @@ def test_carries_the_metadata_long_term_statistics_need(energy_sensor):
     assert sensor.entity_category == "diagnostic"
     assert sensor.unique_id == "01JABCDEF_energy_today"
     assert sensor.translation_key == "today_energy"
+
+
+def test_accumulates_the_standby_draw_while_the_outlet_is_off(energy_sensor):
+    outlet = energy_sensor(power=1000, standby=100)
+    outlet.tick(HOUR)
+    assert outlet.sensor.native_value == 0.1
+
+
+def test_bills_each_period_at_its_own_level(energy_sensor):
+    outlet = energy_sensor(power=1000, standby=100)
+    outlet.advance(HOUR)  # an hour on standby: 0.1 kWh
+    outlet.switch(True)
+    outlet.advance(HOUR)  # an hour on: 1 kWh
+    outlet.switch(False)
+    assert outlet.sensor.native_value == 1.1
+
+
+def test_publishes_the_total_while_only_on_standby(energy_sensor):
+    """A standby draw is a real draw: the total has to keep moving."""
+    outlet = energy_sensor(power=1000, standby=100)
+    outlet.tick(60)
+    assert outlet.sensor.writes[-1] > 0
+
+
+def test_standby_survives_the_daily_reset(energy_sensor):
+    outlet = energy_sensor(power=1000, standby=100)
+    outlet.tick(HOUR)
+    outlet.midnight()
+    assert outlet.sensor.native_value == 0.0
+    outlet.tick(HOUR)
+    assert outlet.sensor.native_value == 0.1
