@@ -1,0 +1,74 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+  # Lets a tag be given its archive after the fact. Releases published before
+  # this workflow existed carry no asset, and with zip_release HACS cannot
+  # install those — this is how they get backfilled.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to build the archive for
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  archive:
+    name: Publish the HACS archive
+    runs-on: ubuntu-latest
+    steps:
+      # Tag names reach the shell through the environment, never through ${{ }}
+      # interpolation: the dispatch input is free text.
+      - name: Resolve the tag
+        id: release
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+        run: echo "tag=${INPUT_TAG:-$REF_NAME}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release.outputs.tag }}
+
+      - name: Stamp the manifest with the release version
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          python3 - "$TAG" <<'PY'
+          import json, pathlib, sys
+
+          tag = sys.argv[1].strip()
+          version = tag[1:] if tag.startswith("v") else tag
+          # Refuse anything that is not a version, so a run fired against a
+          # branch cannot ship version: "main" to every user.
+          if not version or not version[0].isdigit():
+              raise SystemExit(f"error: {tag!r} does not look like a version tag")
+
+          path = pathlib.Path("custom_components/rf433_outlets/manifest.json")
+          manifest = json.loads(path.read_text())
+          manifest["version"] = version
+          path.write_text(json.dumps(manifest, indent=2) + "\n")
+          print(f"manifest version = {version}")
+          PY
+
+      - name: Build the archive
+        # The zip's root must be the integration's *contents*: HACS extracts it
+        # straight into custom_components/rf433_outlets/.
+        run: |
+          cd custom_components/rf433_outlets
+          zip -r "$GITHUB_WORKSPACE/rf433_outlets.zip" . -x '*__pycache__*'
+
+      - name: Check what is about to be published
+        run: |
+          unzip -l rf433_outlets.zip
+          unzip -p rf433_outlets.zip manifest.json
+
+      - name: Attach it to the release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: gh release upload "$TAG" rf433_outlets.zip --clobber

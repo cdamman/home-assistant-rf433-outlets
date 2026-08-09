@@ -204,6 +204,18 @@ Every pull request runs two workflows: **Tests** (the suite above, on Python
 3.12 and 3.13) and **Validate** (`hassfest` plus the HACS action, which check
 the integration's metadata the way Home Assistant and HACS do).
 
+### Releasing
+
+`manifest.json` carries `0.0.0` in the repository. Publishing a GitHub release
+runs the **Release** workflow, which stamps the tag into the manifest, zips the
+integration and attaches `rf433_outlets.zip` to the release; `hacs.json` sets
+`zip_release`, so that archive is what HACS installs. Tag `v1.2.3` and the
+installed integration reports `1.2.3` — the version never has to be bumped by
+hand, and cannot drift from the tag.
+
+Releases published before this existed carry no archive and HACS cannot install
+them. Run the workflow manually with the tag as input to backfill one.
+
 ## License
 
 [MIT](LICENSE). `codesend` and `libwiringPi` are built from
